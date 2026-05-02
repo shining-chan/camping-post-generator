@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>苗栗集團 · 社群貼文生成器</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;background:#F7F7F5;color:#1A1A1A;min-height:100vh;}
+  .page{max-width:960px;margin:0 auto;padding:2rem 1.25rem;}
+  h1{font-size:22px;font-weight:600;color:#1A1A1A;margin-bottom:4px;}
+  .sub{font-size:14px;color:#6B6B6B;margin-bottom:1.5rem;}
+
+  /* Brand tabs */
+  .brand-tabs{display:flex;gap:8px;margin-bottom:1.5rem;}
+  .btab{flex:1;padding:11px 8px;border-radius:10px;border:1px solid #E0E0DC;cursor:pointer;text-align:center;font-size:13px;font-weight:500;color:#6B6B6B;background:#FAFAF8;transition:all .15s;line-height:1.4;}
+  .btab span{display:block;font-size:11px;font-weight:400;color:#9B9B9B;margin-top:2px;}
+  .btab:hover{border-color:#C0C0BC;}
+  .btab.on-d{background:#FAEEDA;color:#633806;border-color:#FAC775;}
+  .btab.on-s{background:#E6F1FB;color:#0C447C;border-color:#85B7EB;}
+  .btab.on-e{background:#EAF3DE;color:#27500A;border-color:#97C459;}
+
+  /* Layout */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+  @media(max-width:680px){.cols{grid-template-columns:1fr;} .brand-tabs{flex-direction:column;}}
+  .panel{background:#fff;border:1px solid #E8E8E4;border-radius:12px;padding:1.25rem;}
+
+  /* Labels */
+  .plbl{font-size:11px;font-weight:600;color:#9B9B9B;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.7rem;}
+
+  /* Fields */
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:12px;color:#6B6B6B;margin-bottom:5px;}
+  .field input,.field textarea{width:100%;font-size:13px;border-radius:8px;border:1px solid #E0E0DC;background:#FAFAF8;color:#1A1A1A;padding:8px 11px;resize:none;font-family:inherit;transition:border-color .12s;}
+  .field input:focus,.field textarea:focus{outline:none;border-color:#1D9E75;background:#fff;}
+
+  /* Mode switch */
+  .mode-sw{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #E0E0DC;border-radius:8px;overflow:hidden;margin-bottom:.9rem;}
+  .msw{padding:9px 8px;font-size:12px;font-weight:500;text-align:center;cursor:pointer;color:#6B6B6B;background:#FAFAF8;border:none;font-family:inherit;transition:all .12s;line-height:1.4;}
+  .msw.on{background:#fff;color:#1A1A1A;box-shadow:inset 0 0 0 1px #E0E0DC;}
+  .msw:first-child{border-right:1px solid #E0E0DC;}
+
+  /* Upload */
+  .upload-area{border:1.5px dashed #C8C8C4;border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .15s;background:#FAFAF8;margin-bottom:8px;position:relative;}
+  .upload-area:hover,.upload-area.drag-over{border-color:#1D9E75;background:rgba(29,158,117,0.04);}
+  .upload-area.drag-over{transform:scale(1.01);}
+  .upload-area input{display:none;}
+  .upload-icon{font-size:22px;margin-bottom:5px;}
+  .upload-txt{font-size:13px;color:#6B6B6B;font-weight:500;}
+  .upload-hint{font-size:11px;color:#9B9B9B;margin-top:3px;}
+  .preview-img{width:100%;border-radius:8px;margin-bottom:6px;max-height:140px;object-fit:cover;}
+  .img-actions{display:flex;justify-content:flex-end;margin-bottom:6px;}
+  .clear-img{font-size:11px;color:#9B9B9B;background:none;border:1px solid #E0E0DC;border-radius:6px;padding:3px 9px;cursor:pointer;font-family:inherit;transition:all .12s;}
+  .clear-img:hover{color:#6B6B6B;border-color:#C0C0BC;}
+  .img-desc-box{font-size:12px;color:#6B6B6B;background:#F3F3F0;border-radius:8px;padding:8px 11px;line-height:1.65;margin-bottom:8px;display:none;}
+
+  /* Tags */
+  .tag-section{margin-bottom:7px;}
+  .tag-section-label{font-size:11px;color:#9B9B9B;margin-bottom:4px;}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag{font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid #E0E0DC;color:#6B6B6B;cursor:pointer;user-select:none;transition:all .1s;background:#fff;}
+  .tag:hover{border-color:#C0C0BC;}
+  .tag.on{background:#1D9E75;color:#fff;border-color:#1D9E75;}
+
+  /* Tone grid */
+  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+  .ti{padding:7px;border-radius:8px;border:1px solid #E0E0DC;cursor:pointer;font-size:12px;text-align:center;color:#6B6B6B;transition:all .1s;background:#fff;}
+  .ti:hover{border-color:#C0C0BC;}
+  .ti.on{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE;}
+
+  /* Platform tabs */
+  .ptabs{display:flex;gap:5px;margin-bottom:.8rem;}
+  .ptab{flex:1;text-align:center;padding:7px;font-size:12px;font-weight:500;border-radius:8px;border:1px solid #E0E0DC;cursor:pointer;color:#6B6B6B;background:#FAFAF8;transition:all .1s;}
+  .ptab:hover{border-color:#C0C0BC;}
+  .ptab.on{background:#fff;color:#1A1A1A;border-color:#1A1A1A;}
+
+  /* Generate button */
+  .gbtn{width:100%;padding:11px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .12s;letter-spacing:.01em;}
+  .gbtn:hover{opacity:.88;}
+  .gbtn:disabled{opacity:.45;cursor:not-allowed;}
+
+  /* Output */
+  .vtabs{display:flex;gap:5px;margin-bottom:.7rem;}
+  .vtab{padding:5px 11px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #E0E0DC;cursor:pointer;color:#6B6B6B;background:#FAFAF8;transition:all .1s;}
+  .vtab:hover{border-color:#C0C0BC;}
+  .vtab.on{background:#fff;color:#1A1A1A;border-color:#1A1A1A;}
+  .out-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
+  .hcount{font-size:11px;color:#9B9B9B;}
+  .brand-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600;margin-left:6px;}
+  .post-box{font-size:13px;line-height:1.85;color:#1A1A1A;white-space:pre-wrap;word-break:break-word;min-height:160px;}
+  .pholder{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;color:#C0C0BC;font-size:13px;gap:7px;}
+  .ldots{display:none;flex-direction:column;align-items:center;gap:10px;color:#9B9B9B;font-size:13px;min-height:160px;justify-content:center;}
+  .ldots.show{display:flex;}
+  .dot-row{display:flex;gap:6px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:#1D9E75;animation:bop 1s infinite;}
+  .dot:nth-child(2){animation-delay:.15s;}
+  .dot:nth-child(3){animation-delay:.3s;}
+  @keyframes bop{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+  .btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .abtn{padding:6px 12px;border-radius:8px;border:1px solid #E0E0DC;background:transparent;color:#6B6B6B;font-size:12px;cursor:pointer;font-family:inherit;transition:all .1s;}
+  .abtn:hover{background:#F3F3F0;border-color:#C0C0BC;}
+  .abtn.hide{display:none;}
+  .pub-fb{padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;background:#E6F1FB;color:#0C447C;border:1px solid #B5D4F4;display:none;font-weight:500;}
+  .pub-ig{padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;background:#FBEAF0;color:#72243E;border:1px solid #F4C0D1;display:none;font-weight:500;}
+  .pub-fb.show,.pub-ig.show{display:inline-block;}
+  .pub-fb:hover{opacity:.8;}
+  .pub-ig:hover{opacity:.8;}
+  .ccount{font-size:11px;color:#9B9B9B;margin-top:5px;}
+
+  /* History */
+  .hi{border:1px solid #E8E8E4;border-radius:10px;padding:9px 12px;cursor:pointer;transition:border-color .12s;margin-bottom:7px;}
+  .hi:hover{border-color:#C0C0BC;}
+  .hi.sel{border-color:#1D9E75;background:#F0FBF7;}
+  .hi-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+  .hi-ver{font-size:11px;font-weight:600;color:#1D9E75;}
+  .hi-time{font-size:11px;color:#9B9B9B;}
+  .hi-topic{font-size:12px;font-weight:600;color:#1A1A1A;margin-bottom:3px;}
+  .hi-prev{font-size:12px;color:#6B6B6B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bdgs{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
+  .bdg{font-size:10px;padding:2px 7px;border-radius:99px;background:#F3F3F0;color:#6B6B6B;}
+  .bdg-d{background:#FAEEDA;color:#633806;}
+  .bdg-s{background:#E6F1FB;color:#0C447C;}
+  .bdg-e{background:#EAF3DE;color:#27500A;}
+  .bdg-img{background:#FBEAF0;color:#72243E;}
+  .del-btn{font-size:11px;color:#C0C0BC;border:none;background:none;cursor:pointer;padding:1px 5px;font-family:inherit;}
+  .del-btn:hover{color:#9B9B9B;}
+  .empty{font-size:13px;color:#C0C0BC;text-align:center;padding:2rem 0;}
+
+  /* Compare */
+  .cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .cbox{border:1px solid #E8E8E4;border-radius:10px;padding:10px;}
+  .cbox-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #F0F0EC;}
+  .cbox-ver{font-size:11px;font-weight:600;color:#1D9E75;}
+  .cbox-meta{font-size:10px;color:#9B9B9B;}
+  .cbox-txt{font-size:12px;line-height:1.8;color:#1A1A1A;white-space:pre-wrap;word-break:break-word;}
+  .sel-hint{font-size:13px;color:#9B9B9B;text-align:center;padding:.9rem 0;}
+
+  /* Biz note */
+  .biz-note{font-size:12px;background:#F0FBF7;border:1px solid #B8E8D4;border-radius:8px;padding:9px 12px;margin-top:10px;line-height:1.65;display:none;color:#1A6B50;}
+  .biz-note.show{display:block;}
+  .biz-note a{color:#0F6E56;font-weight:600;}
+
+  /* Divider */
+  .divider{border:none;border-top:1px solid #F0F0EC;margin:10px 0;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>苗栗集團 · 社群貼文生成器</h1>
+  <p class="sub">選擇營區 → 選模式 → 生成 → 複製貼至 Meta Business Suite 發佈</p>
+
+  <div class="brand-tabs">
+    <div class="btab on-d" data-brand="d" onclick="setBrand('d')">🟠 桃樂絲<span>《綠野仙蹤》· 夕陽農場 · 交通便利</span></div>
+    <div class="btab" data-brand="s" onclick="setBrand('s')">🔵 小日子<span>包區服務 · 空拍 · 夜景觀景台</span></div>
+    <div class="btab" data-brand="e" onclick="setBrand('e')">🟢 夏綠地<span>海拔500m · 雲海夕陽 · 世外桃源</span></div>
+  </div>
+
+  <div class="cols">
+    <!-- Left Panel -->
+    <div class="panel">
+      <div class="plbl">創作模式</div>
+      <div class="mode-sw">
+        <button class="msw on" id="mBtnA" onclick="setMode('a')">模式 A：照片說故事<br><span style="font-size:11px;font-weight:400;">AI 讀照片主導（照片選填）</span></button>
+        <button class="msw" id="mBtnB" onclick="setMode('b')">模式 B：我有主題<br><span style="font-size:11px;font-weight:400;">文案我定，照片輔助</span></button>
+      </div>
+
+      <div id="modeA">
+        <div class="upload-area" id="dropA"
+          onclick="document.getElementById('imgInputA').click()"
+          ondragover="handleDragOver(event,'A')"
+          ondragleave="handleDragLeave(event,'A')"
+          ondrop="handleDrop(event,'A')">
+          <input type="file" id="imgInputA" accept="image/*" onchange="handleImg(event,'A')">
+          <div id="uploadUIA">
+            <div class="upload-icon">📷</div>
+            <div class="upload-txt">點擊上傳 或 拖曳照片至此</div>
+            <div class="upload-hint">支援 JPG、PNG、WEBP · 選填，沒有照片也可以生成</div>
+          </div>
+          <img id="previewImgA" class="preview-img" style="display:none;">
+        </div>
+        <div id="imgActionsA" class="img-actions" style="display:none;">
+          <button class="clear-img" onclick="clearImg('A')">✕ 移除照片</button>
+        </div>
+        <div id="imgDescA" class="img-desc-box"></div>
+        <div class="field">
+          <label>貼文方向 / 補充說明（選填）</label>
+          <input id="hintA" placeholder="例：這天特別晴、想強調夕陽美景、五一連假倒數"/>
+        </div>
+      </div>
+
+      <div id="modeB" style="display:none;">
+        <div class="field">
+          <label>主題 / 核心文案方向（必填）</label>
+          <textarea id="themeB" rows="3" placeholder="例：連假訂位開放通知、夕陽限定美景、五一連假倒數"></textarea>
+        </div>
+        <div class="field">
+          <label>關鍵詞（選填）</label>
+          <input id="keywordsB" placeholder="例：限量、五一連假、一泊二食方案"/>
+        </div>
+        <div class="upload-area" id="dropB"
+          onclick="document.getElementById('imgInputB').click()"
+          ondragover="handleDragOver(event,'B')"
+          ondragleave="handleDragLeave(event,'B')"
+          ondrop="handleDrop(event,'B')">
+          <input type="file" id="imgInputB" accept="image/*" onchange="handleImg(event,'B')">
+          <div id="uploadUIB">
+            <div class="upload-icon">📷</div>
+            <div class="upload-txt">點擊上傳 或 拖曳照片至此</div>
+            <div class="upload-hint">選填 · 作為輔助，主題優先</div>
+          </div>
+          <img id="previewImgB" class="preview-img" style="display:none;">
+        </div>
+        <div id="imgActionsB" class="img-actions" style="display:none;">
+          <button class="clear-img" onclick="clearImg('B')">✕ 移除照片</button>
+        </div>
+        <div id="imgDescB" class="img-desc-box"></div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="field">
+        <label>語氣</label>
+        <div class="tgrid">
+          <div class="ti on" data-t="溫馨感性">溫馨感性</div>
+          <div class="ti" data-t="活潑有趣">活潑有趣</div>
+          <div class="ti" data-t="文青詩意">文青詩意</div>
+          <div class="ti" data-t="簡潔俐落">簡潔俐落</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>特色標籤</label>
+        <div class="tag-section">
+          <div class="tag-section-label">三區共有特色</div>
+          <div class="tags" id="sharedTags"></div>
+        </div>
+        <div class="tag-section" style="margin-top:8px;">
+          <div class="tag-section-label" id="uniqueLabel">桃樂絲 專屬特色</div>
+          <div class="tags" id="uniqueTags"></div>
+        </div>
+      </div>
+
+      <div class="plbl" style="margin-top:10px;">目標平台</div>
+      <div class="ptabs">
+        <div class="ptab on" data-p="instagram">Instagram</div>
+        <div class="ptab" data-p="facebook">Facebook</div>
+        <div class="ptab" data-p="both">兩者都要</div>
+      </div>
+      <button class="gbtn" id="gBtn" onclick="generate()">✦ AI 生成貼文</button>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="panel">
+      <div class="out-hdr">
+        <div style="display:flex;align-items:center;">
+          <span class="plbl" style="margin-bottom:0;">生成結果</span>
+          <span class="brand-pill" id="brandPill" style="background:#FAEEDA;color:#633806;">桃樂絲</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="hcount" id="hCount"></span>
+          <div class="vtabs">
+            <div class="vtab on" data-v="single" onclick="sv('single')">最新版</div>
+            <div class="vtab" data-v="compare" onclick="sv('compare')">比較</div>
+            <div class="vtab" data-v="history" onclick="sv('history')">歷史</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vSingle">
+        <div class="ldots" id="ldots">
+          <div class="dot-row"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <span id="ldotMsg">生成中...</span>
+        </div>
+        <div class="pholder" id="pholder">
+          <span style="font-size:32px;">🏕️</span>
+          <span>選擇營區與模式後點擊生成</span>
+        </div>
+        <div id="postBox" class="post-box" style="display:none;"></div>
+        <div id="ccount" class="ccount" style="display:none;"></div>
+        <div class="btns">
+          <button class="abtn hide" id="cpyBtn" onclick="copyLatest()">複製貼文</button>
+          <button class="abtn hide" id="reBtn" onclick="generate()">重新生成 ↗</button>
+          <button class="pub-fb" id="fbBtn" onclick="openBiz()">開啟 Business Suite · FB</button>
+          <button class="pub-ig" id="igBtn" onclick="openBiz()">開啟 Business Suite · IG</button>
+        </div>
+        <div class="biz-note" id="bizNote"></div>
+      </div>
+
+      <div id="vCompare" style="display:none;">
+        <div class="sel-hint" id="selHint">從歷史記錄選取兩個版本進行比較</div>
+        <div class="cmp-grid" id="cmpGrid" style="display:none;"></div>
+        <div class="btns" style="margin-top:10px;">
+          <button class="abtn" onclick="clearCmp()">清除選取</button>
+        </div>
+      </div>
+
+      <div id="vHistory" style="display:none;">
+        <div id="histList"><div class="empty">尚無歷史記錄</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Brand Data ────────────────────────────────────────────────────
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+const MODEL = 'claude-sonnet-4-20250514';
+
+const SHARED_TAGS = ['網美鐘型帳','客製化排帳服務','24小時客服','毛孩友善','高爾夫球車接駁','一泊二食'];
+const SHARED_DEFAULT = ['網美鐘型帳','毛孩友善','一泊二食','高爾夫球車接駁'];
+
+const BRANDS = {
+  d: {
+    name: '桃樂絲', pill: '桃樂絲', pillBg: '#FAEEDA', pillColor: '#633806', bdgClass: 'bdg-d',
+    uniqueTags: ['開心農場','夕陽夜景觀景台','免裝備','海拔低交通便利','BBQ烤肉'],
+    uniqueDefault: ['開心農場','夕陽夜景觀景台','免裝備'],
+    note: `品牌：桃樂絲露營區（苗栗公館鄉），取名自《綠野仙蹤》桃樂絲，充滿驚喜與冒險感。
+主打特色：開心農場現摘體驗、夕陽夜景觀景台第一排、免裝備輕鬆入住，海拔不高、公館交流道下車即達。
+共有服務：網美鐘型帳、客製化排帳服務、24小時客服、毛孩友善、高爾夫球車接駁、一泊二食（晚餐為烤肉、早餐）。`
+  },
+  s: {
+    name: '小日子', pill: '小日子', pillBg: '#E6F1FB', pillColor: '#0C447C', bdgClass: 'bdg-s',
+    uniqueTags: ['人多可包區','空拍機體驗','夕陽夜景觀景台','免裝備','海拔低交通便利','城市夜景','炊事帳聚會'],
+    uniqueDefault: ['人多可包區','空拍機體驗','夕陽夜景觀景台'],
+    note: `品牌：小日子露營區（苗栗公館鄉），主打網美最夯鐘型帳、制高點觀景台遠眺夕陽與城市夜景，有夠 Chill！
+主打特色：人多可小包區、空拍機體驗、免裝備露營，海拔不高交通便利，公館交流道下10分鐘。
+共有服務：網美鐘型帳、客製化排帳服務、24小時客服、毛孩友善、高爾夫球車接駁、一泊二食（晚餐為烤肉、早餐）。`
+  },
+  e: {
+    name: '夏綠地', pill: '夏綠地', pillBg: '#EAF3DE', pillColor: '#27500A', bdgClass: 'bdg-e',
+    uniqueTags: ['世外桃源美景','雲海奇景','夕陽美景','海拔500m氣候宜人','純白鐘型帳','肖楠大草皮'],
+    uniqueDefault: ['世外桃源美景','雲海奇景','海拔500m氣候宜人'],
+    note: `品牌：夏綠地露營區（苗栗），位於海拔500公尺，氣候涼爽宜人。
+主打特色：純白鐘型帳、肖楠大草皮，宛若世外桃源，景色絕美，天氣好時可見雲海與夕陽。
+共有服務：網美鐘型帳、客製化排帳服務、24小時客服、毛孩友善、高爾夫球車接駁、一泊二食（晚餐為烤肉、早餐）。`
+  }
+};
+
+// ── State ─────────────────────────────────────────────────────────
+let brand = 'd', mode = 'a', tone = '溫馨感性', platform = 'instagram';
+let sharedFeats = [...SHARED_DEFAULT], uniqueFeats = [...BRANDS.d.uniqueDefault];
+let history = [], cmpIds = [], latest = '', curView = 'single';
+let imgDataA = null, imgDescA = '', imgDataB = null, imgDescB = '';
+
+// ── Drag & Drop ───────────────────────────────────────────────────
+function handleDragOver(e, sfx) { e.preventDefault(); e.stopPropagation(); document.getElementById('drop' + sfx).classList.add('drag-over'); }
+function handleDragLeave(e, sfx) { e.preventDefault(); e.stopPropagation(); document.getElementById('drop' + sfx).classList.remove('drag-over'); }
+function handleDrop(e, sfx) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('drop' + sfx).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadImg(file, sfx);
+}
+function handleImg(e, sfx) { const file = e.target.files[0]; if (file) loadImg(file, sfx); }
+function loadImg(file, sfx) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = ev.target.result;
+    if (sfx === 'A') { imgDataA = data; imgDescA = ''; } else { imgDataB = data; imgDescB = ''; }
+    document.getElementById('previewImg' + sfx).src = data;
+    document.getElementById('previewImg' + sfx).style.display = 'block';
+    document.getElementById('uploadUI' + sfx).style.display = 'none';
+    document.getElementById('imgDesc' + sfx).style.display = 'none';
+    document.getElementById('imgActions' + sfx).style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+function clearImg(sfx) {
+  if (sfx === 'A') { imgDataA = null; imgDescA = ''; } else { imgDataB = null; imgDescB = ''; }
+  document.getElementById('previewImg' + sfx).style.display = 'none';
+  document.getElementById('previewImg' + sfx).src = '';
+  document.getElementById('uploadUI' + sfx).style.display = 'block';
+  document.getElementById('imgDesc' + sfx).style.display = 'none';
+  document.getElementById('imgDesc' + sfx).textContent = '';
+  document.getElementById('imgActions' + sfx).style.display = 'none';
+  document.getElementById('imgInput' + sfx).value = '';
+}
+
+// ── Brand / Tags / UI ─────────────────────────────────────────────
+function setBrand(b) {
+  brand = b;
+  document.querySelectorAll('.btab').forEach(t => { t.classList.remove('on-d', 'on-s', 'on-e'); if (t.dataset.brand === b) t.classList.add('on-' + b); });
+  const bp = BRANDS[b];
+  const pill = document.getElementById('brandPill');
+  pill.textContent = bp.pill; pill.style.background = bp.pillBg; pill.style.color = bp.pillColor;
+  uniqueFeats = [...bp.uniqueDefault];
+  document.getElementById('uniqueLabel').textContent = bp.name + ' 專屬特色';
+  renderTags();
+}
+function renderTags() {
+  document.getElementById('sharedTags').innerHTML = SHARED_TAGS.map(t =>
+    `<span class="tag${sharedFeats.includes(t) ? ' on' : ''}" onclick="toggleShared('${t}')">${t}</span>`).join('');
+  document.getElementById('uniqueTags').innerHTML = BRANDS[brand].uniqueTags.map(t =>
+    `<span class="tag${uniqueFeats.includes(t) ? ' on' : ''}" onclick="toggleUnique('${t}')">${t}</span>`).join('');
+}
+function toggleShared(v) { sharedFeats = sharedFeats.includes(v) ? sharedFeats.filter(f => f !== v) : [...sharedFeats, v]; renderTags(); }
+function toggleUnique(v) { uniqueFeats = uniqueFeats.includes(v) ? uniqueFeats.filter(f => f !== v) : [...uniqueFeats, v]; renderTags(); }
+document.querySelectorAll('.ti').forEach(t => t.addEventListener('click', () => { document.querySelectorAll('.ti').forEach(x => x.classList.remove('on')); t.classList.add('on'); tone = t.dataset.t; }));
+document.querySelectorAll('.ptab').forEach(t => t.addEventListener('click', () => { document.querySelectorAll('.ptab').forEach(x => x.classList.remove('on')); t.classList.add('on'); platform = t.dataset.p; }));
+function setMode(m) {
+  mode = m;
+  document.getElementById('mBtnA').classList.toggle('on', m === 'a');
+  document.getElementById('mBtnB').classList.toggle('on', m === 'b');
+  document.getElementById('modeA').style.display = m === 'a' ? 'block' : 'none';
+  document.getElementById('modeB').style.display = m === 'b' ? 'block' : 'none';
+}
+
+// ── Image Analysis ────────────────────────────────────────────────
+async function analyzeImg(imgData, sfx, isMain) {
+  const base64 = imgData.split(',')[1], mtype = imgData.match(/data:([^;]+);/)[1];
+  const instr = isMain
+    ? '請用3-4句繁體中文詳細描述這張露營照片的主角、場景、光線與情感氛圍，讓文案小編能據此說一個完整故事。只要描述，不要前言。'
+    : '請用1-2句繁體中文簡短描述照片中最明顯的視覺元素（場景、物件、人物），不需詮釋情感。只要描述，不要前言。';
+  const res = await fetch(ANTHROPIC_API, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, max_tokens: 200, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } }, { type: 'text', text: instr }] }] })
+  });
+  const d = await res.json();
+  const desc = d.content?.[0]?.text || '';
+  if (sfx === 'A') imgDescA = desc; else imgDescB = desc;
+  if (desc) { const box = document.getElementById('imgDesc' + sfx); box.textContent = '📷 ' + desc; box.style.display = 'block'; }
+  return desc;
+}
+
+// ── View / History / Compare ──────────────────────────────────────
+function sv(v) {
+  curView = v;
+  document.querySelectorAll('.vtab').forEach(t => t.classList.toggle('on', t.dataset.v === v));
+  ['vSingle', 'vCompare', 'vHistory'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById(v === 'single' ? 'vSingle' : v === 'compare' ? 'vCompare' : 'vHistory').style.display = 'block';
+  if (v === 'history') renderHist();
+  if (v === 'compare') renderCmp();
+}
+function renderHist() {
+  const el = document.getElementById('histList');
+  if (!history.length) { el.innerHTML = '<div class="empty">尚無歷史記錄</div>'; return; }
+  el.innerHTML = history.slice().reverse().map(h => `
+    <div class="hi${cmpIds.includes(h.id) ? ' sel' : ''}" onclick="toggleCmp('${h.id}')">
+      <div class="hi-top"><span class="hi-ver">版本 ${h.ver}</span>
+        <div style="display:flex;gap:5px;align-items:center;"><span class="hi-time">${h.time}</span>
+          <button class="del-btn" onclick="event.stopPropagation();delHist('${h.id}')">✕</button></div>
+      </div>
+      <div class="hi-topic">${h.label}</div>
+      <div class="hi-prev">${h.text.substring(0, 58)}...</div>
+      <div class="bdgs">
+        <span class="bdg ${BRANDS[h.brand].bdgClass}">${BRANDS[h.brand].name}</span>
+        <span class="bdg">${h.platform === 'instagram' ? 'IG' : h.platform === 'facebook' ? 'FB' : 'IG+FB'}</span>
+        <span class="bdg">${h.tone}</span>
+        <span class="bdg">${h.text.length}字</span>
+        <span class="bdg" style="background:#E1F5EE;color:#0F6E56;">${h.mode === 'a' ? '照片故事' : '我的主題'}</span>
+        ${h.hasImg ? '<span class="bdg bdg-img">含照片</span>' : ''}
+        ${cmpIds.includes(h.id) ? '<span class="bdg" style="background:#E1F5EE;color:#0F6E56;">已選取</span>' : ''}
+      </div>
+    </div>`).join('');
+}
+function toggleCmp(id) { cmpIds = cmpIds.includes(id) ? cmpIds.filter(x => x !== id) : cmpIds.length < 2 ? [...cmpIds, id] : [cmpIds[1], id]; renderHist(); if (curView === 'compare') renderCmp(); }
+function clearCmp() { cmpIds = []; renderCmp(); renderHist(); }
+function renderCmp() {
+  const g = document.getElementById('cmpGrid'), h = document.getElementById('selHint');
+  if (cmpIds.length === 0) { g.style.display = 'none'; h.style.display = 'block'; h.textContent = '從歷史記錄選取兩個版本進行比較'; return; }
+  if (cmpIds.length === 1) { g.style.display = 'none'; h.style.display = 'block'; h.textContent = '已選取 1 個版本，再選 1 個即可比較'; return; }
+  const items = cmpIds.map(id => history.find(x => x.id === id)).filter(Boolean);
+  if (items.length < 2) return;
+  h.style.display = 'none'; g.style.display = 'grid';
+  g.innerHTML = items.map(x => `<div class="cbox"><div class="cbox-hd"><span class="cbox-ver">版本 ${x.ver} · ${BRANDS[x.brand].name}</span><span class="cbox-meta">${x.platform === 'instagram' ? 'IG' : x.platform === 'facebook' ? 'FB' : 'IG+FB'} · ${x.time}</span></div><div class="cbox-txt">${x.text}</div></div>`).join('');
+}
+function delHist(id) { history = history.filter(h => h.id !== id); cmpIds = cmpIds.filter(x => x !== id); updateCount(); renderHist(); }
+function updateCount() { document.getElementById('hCount').textContent = history.length ? `${history.length} 筆記錄` : ''; }
+function copyLatest() {
+  if (!latest) return;
+  navigator.clipboard.writeText(latest).then(() => { const b = document.getElementById('cpyBtn'); b.textContent = '✓ 已複製！'; setTimeout(() => { b.textContent = '複製貼文'; }, 1500); });
+}
+function openBiz() {
+  copyLatest();
+  document.getElementById('bizNote').innerHTML = '✅ 貼文已複製！請前往 <a href="https://business.facebook.com" target="_blank">Meta Business Suite ↗</a>，點「建立貼文」貼上，可同時選 FB 和 IG 發佈，亦可設定排程時間。';
+  document.getElementById('bizNote').classList.add('show');
+}
+
+// ── Generate ──────────────────────────────────────────────────────
+async function generate() {
+  sv('single');
+  document.getElementById('pholder').style.display = 'none';
+  document.getElementById('postBox').style.display = 'none';
+  document.getElementById('ccount').style.display = 'none';
+  document.getElementById('bizNote').classList.remove('show');
+  document.getElementById('ldots').classList.add('show');
+  document.getElementById('ldotMsg').textContent = '生成中...';
+  ['cpyBtn', 'reBtn'].forEach(id => document.getElementById(id).classList.add('hide'));
+  document.getElementById('fbBtn').classList.remove('show');
+  document.getElementById('igBtn').classList.remove('show');
+  document.getElementById('gBtn').disabled = true;
+
+  const bp = BRANDS[brand];
+  const allFeats = [...sharedFeats, ...uniqueFeats];
+  const featsStr = allFeats.length ? allFeats.join('、') : [...SHARED_DEFAULT, ...bp.uniqueDefault].join('、');
+  const pGuide = platform === 'instagram' ? 'Instagram 格式：善用換行增加節奏感，結尾加 5-8 個繁體中文 hashtag（含品牌名），150-250 字'
+    : platform === 'facebook' ? 'Facebook 格式：段落清晰，語氣親切，結尾 2-3 個 hashtag，200-300 字'
+      : '請生成兩段，第一段標示【Instagram】，第二段標示【Facebook】，各符合其平台風格';
+
+  const activeImgData = mode === 'a' ? imgDataA : imgDataB;
+  let label = '', prompt = '', contentParts = [];
+
+  if (mode === 'a') {
+    const hint = document.getElementById('hintA').value.trim();
+    if (activeImgData && !imgDescA) { document.getElementById('ldotMsg').textContent = '分析照片中...'; await analyzeImg(activeImgData, 'A', true); }
+    label = hint || (imgDescA ? '照片故事' : '品牌日常貼文');
+    const noInputNote = (!activeImgData && !hint) ? '沒有照片也沒有補充說明，請根據品牌特色與本次強調標籤自由發揮，創作一篇吸引人的貼文。\n' : '';
+    prompt = `你是${bp.name}露營區的社群媒體小編。\n${bp.note}\n本次強調特色：${featsStr}\n語氣：${tone}\n${pGuide}\n\n【模式A · 照片說故事／品牌日常貼文】\n${imgDescA ? `照片描述：${imgDescA}\n` : ''}${hint ? `補充說明：${hint}\n` : ''}${noInputNote}請融入品牌精神，讓讀者感受身歷其境。直接輸出貼文，繁體中文，不要前言。`;
+    if (activeImgData) contentParts = [{ type: 'image', source: { type: 'base64', media_type: activeImgData.match(/data:([^;]+);/)[1], data: activeImgData.split(',')[1] } }, { type: 'text', text: prompt }];
+  } else {
+    const theme = document.getElementById('themeB').value.trim();
+    const keywords = document.getElementById('keywordsB').value.trim();
+    if (!theme) { alert('模式 B 請填寫主題與文案方向'); document.getElementById('ldots').classList.remove('show'); document.getElementById('gBtn').disabled = false; document.getElementById('pholder').style.display = 'flex'; return; }
+    if (activeImgData && !imgDescB) { document.getElementById('ldotMsg').textContent = '分析照片中...'; await analyzeImg(activeImgData, 'B', false); }
+    label = theme.substring(0, 20);
+    prompt = `你是${bp.name}露營區的社群媒體小編。\n${bp.note}\n本次強調特色：${featsStr}\n語氣：${tone}\n${pGuide}\n\n【模式B · 我有主題，照片輔助】\n核心主題（請優先遵守）：${theme}\n${keywords ? `強調關鍵詞：${keywords}\n` : ''}${imgDescB ? `照片視覺輔助（次要參考）：${imgDescB}\n` : ''}\n請以上述主題為主軸撰寫，照片元素僅作輔助點綴，不要讓照片主導走向。直接輸出貼文，繁體中文，不要前言。`;
+    if (activeImgData) contentParts = [{ type: 'image', source: { type: 'base64', media_type: activeImgData.match(/data:([^;]+);/)[1], data: activeImgData.split(',')[1] } }, { type: 'text', text: prompt }];
+  }
+
+  document.getElementById('ldotMsg').textContent = '撰寫文案中...';
+  let text = '';
+  try {
+    const res = await fetch(ANTHROPIC_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: MODEL, max_tokens: 1000, messages: [{ role: 'user', content: contentParts.length ? contentParts : prompt }] })
+    });
+    const d = await res.json();
+    text = d.content?.[0]?.text || '生成失敗，請再試一次。';
+  } catch { text = '發生錯誤，請稍後再試。'; }
+
+  latest = text;
+  const now = new Date();
+  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  history.push({ id: Date.now().toString(), ver: history.length + 1, label, brand, mode, tone, platform, text, time, hasImg: !!activeImgData });
+  updateCount();
+
+  document.getElementById('ldots').classList.remove('show');
+  document.getElementById('gBtn').disabled = false;
+  const pb = document.getElementById('postBox'); pb.textContent = text; pb.style.display = 'block';
+  document.getElementById('ccount').textContent = `${text.length} 字`; document.getElementById('ccount').style.display = 'block';
+  document.getElementById('cpyBtn').classList.remove('hide');
+  document.getElementById('reBtn').classList.remove('hide');
+  if (platform === 'facebook' || platform === 'both') document.getElementById('fbBtn').classList.add('show');
+  if (platform === 'instagram' || platform === 'both') document.getElementById('igBtn').classList.add('show');
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+renderTags();
+</script>
+</body>
+</html>
