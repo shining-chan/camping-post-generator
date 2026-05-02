@@ -440,22 +440,7 @@ function setMode(m) {
   document.getElementById('modeB').style.display = m === 'b' ? 'block' : 'none';
 }
 
-// ── Image Analysis ────────────────────────────────────────────────
-async function analyzeImg(imgData, sfx, isMain) {
-  const base64 = imgData.split(',')[1], mtype = imgData.match(/data:([^;]+);/)[1];
-  const instr = isMain
-    ? '請用3-4句繁體中文詳細描述這張露營照片的主角、場景、光線與情感氛圍，讓文案小編能據此說一個完整故事。只要描述，不要前言。'
-    : '請用1-2句繁體中文簡短描述照片中最明顯的視覺元素（場景、物件、人物），不需詮釋情感。只要描述，不要前言。';
-  const res = await fetch(ANTHROPIC_API, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 200, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } }, { type: 'text', text: instr }] }] })
-  });
-  const d = await res.json();
-  const desc = d.content?.[0]?.text || '';
-  if (sfx === 'A') imgDescA = desc; else imgDescB = desc;
-  if (desc) { const box = document.getElementById('imgDesc' + sfx); box.textContent = '📷 ' + desc; box.style.display = 'block'; }
-  return desc;
-}
+// ── Image Analysis (kept for reference, no longer called separately) ─
 
 // ── View / History / Compare ──────────────────────────────────────
 function sv(v) {
@@ -533,31 +518,51 @@ async function generate() {
       : '請生成兩段，第一段標示【Instagram】，第二段標示【Facebook】，各符合其平台風格';
 
   const activeImgData = mode === 'a' ? imgDataA : imgDataB;
-  let label = '', prompt = '', contentParts = [];
+  let label = '', prompt = '', messageContent = [];
 
   if (mode === 'a') {
     const hint = document.getElementById('hintA').value.trim();
-    if (activeImgData && !imgDescA) { document.getElementById('ldotMsg').textContent = '分析照片中...'; await analyzeImg(activeImgData, 'A', true); }
-    label = hint || (imgDescA ? '照片故事' : '品牌日常貼文');
+    label = hint || (activeImgData ? '照片故事' : '品牌日常貼文');
+    const imgInstruction = activeImgData
+      ? '請先閱讀這張露營照片，理解畫面中的場景、光線、人物與氛圍，然後直接以這張照片為靈感寫出貼文，不需要另外描述照片。'
+      : '';
     const noInputNote = (!activeImgData && !hint) ? '沒有照片也沒有補充說明，請根據品牌特色與本次強調標籤自由發揮，創作一篇吸引人的貼文。\n' : '';
-    prompt = `你是${bp.name}露營區的社群媒體小編。\n${bp.note}\n本次強調特色：${featsStr}\n語氣：${tone}\n${pGuide}\n\n【模式A · 照片說故事／品牌日常貼文】\n${imgDescA ? `照片描述：${imgDescA}\n` : ''}${hint ? `補充說明：${hint}\n` : ''}${noInputNote}請融入品牌精神，讓讀者感受身歷其境。直接輸出貼文，繁體中文，不要前言。`;
-    if (activeImgData) contentParts = [{ type: 'image', source: { type: 'base64', media_type: activeImgData.match(/data:([^;]+);/)[1], data: activeImgData.split(',')[1] } }, { type: 'text', text: prompt }];
+    prompt = `你是${bp.name}露營區的社群媒體小編。\n${bp.note}\n本次強調特色：${featsStr}\n語氣：${tone}\n${pGuide}\n\n【模式A · 照片說故事／品牌日常貼文】\n${imgInstruction}${hint ? `補充說明：${hint}\n` : ''}${noInputNote}請融入品牌精神，讓讀者感受身歷其境。直接輸出貼文，繁體中文，不要前言。`;
+    if (activeImgData) {
+      messageContent = [
+        { type: 'image', source: { type: 'base64', media_type: activeImgData.match(/data:([^;]+);/)[1], data: activeImgData.split(',')[1] } },
+        { type: 'text', text: prompt }
+      ];
+    }
   } else {
     const theme = document.getElementById('themeB').value.trim();
     const keywords = document.getElementById('keywordsB').value.trim();
-    if (!theme) { alert('模式 B 請填寫主題與文案方向'); document.getElementById('ldots').classList.remove('show'); document.getElementById('gBtn').disabled = false; document.getElementById('pholder').style.display = 'flex'; return; }
-    if (activeImgData && !imgDescB) { document.getElementById('ldotMsg').textContent = '分析照片中...'; await analyzeImg(activeImgData, 'B', false); }
+    if (!theme) {
+      alert('模式 B 請填寫主題與文案方向');
+      document.getElementById('ldots').classList.remove('show');
+      document.getElementById('gBtn').disabled = false;
+      document.getElementById('pholder').style.display = 'flex';
+      return;
+    }
     label = theme.substring(0, 20);
-    prompt = `你是${bp.name}露營區的社群媒體小編。\n${bp.note}\n本次強調特色：${featsStr}\n語氣：${tone}\n${pGuide}\n\n【模式B · 我有主題，照片輔助】\n核心主題（請優先遵守）：${theme}\n${keywords ? `強調關鍵詞：${keywords}\n` : ''}${imgDescB ? `照片視覺輔助（次要參考）：${imgDescB}\n` : ''}\n請以上述主題為主軸撰寫，照片元素僅作輔助點綴，不要讓照片主導走向。直接輸出貼文，繁體中文，不要前言。`;
-    if (activeImgData) contentParts = [{ type: 'image', source: { type: 'base64', media_type: activeImgData.match(/data:([^;]+);/)[1], data: activeImgData.split(',')[1] } }, { type: 'text', text: prompt }];
+    const imgInstruction = activeImgData ? '照片提供視覺輔助參考（次要），請以下方主題為主軸，不要讓照片主導走向。\n' : '';
+    prompt = `你是${bp.name}露營區的社群媒體小編。\n${bp.note}\n本次強調特色：${featsStr}\n語氣：${tone}\n${pGuide}\n\n【模式B · 我有主題，照片輔助】\n${imgInstruction}核心主題（請優先遵守）：${theme}\n${keywords ? `強調關鍵詞：${keywords}\n` : ''}\n請以上述主題為主軸撰寫，照片元素僅作輔助點綴。直接輸出貼文，繁體中文，不要前言。`;
+    if (activeImgData) {
+      messageContent = [
+        { type: 'image', source: { type: 'base64', media_type: activeImgData.match(/data:([^;]+);/)[1], data: activeImgData.split(',')[1] } },
+        { type: 'text', text: prompt }
+      ];
+    }
   }
 
-  document.getElementById('ldotMsg').textContent = '撰寫文案中...';
   let text = '';
   try {
     const res = await fetch(ANTHROPIC_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1000, messages: [{ role: 'user', content: contentParts.length ? contentParts : prompt }] })
+      body: JSON.stringify({
+        model: MODEL, max_tokens: 1000,
+        messages: [{ role: 'user', content: messageContent.length ? messageContent : prompt }]
+      })
     });
     const d = await res.json();
     text = d.content?.[0]?.text || '生成失敗，請再試一次。';
